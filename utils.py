@@ -14,6 +14,9 @@
 
 
 import datetime
+from collections import namedtuple
+from typing import List
+
 import numpy as np
 import cv2
 
@@ -34,18 +37,11 @@ COLOR_WHITE = (255, 255, 255)
 COLOR_YELLOW = (0, 255, 255)
 
 
+BoundingBox = namedtuple("BoundingBox", ["left", "top", "right", "bottom", "confidence"])
+
 # -------------------------------------------------------------------
 # Help functions
 # -------------------------------------------------------------------
-
-# Get the names of the output layers
-def get_outputs_names(net):
-    # Get the names of all the layers in the network
-    layers_names = net.getLayerNames()
-
-    # Get the names of the output layers, i.e. the layers with unconnected
-    # outputs
-    return [layers_names[i[0] - 1] for i in net.getUnconnectedOutLayers()]
 
 
 # Draw the predicted bounding box
@@ -63,7 +59,8 @@ def draw_predict(frame, conf, left, top, right, bottom):
                 COLOR_WHITE, 1)
 
 
-def post_process(frame, outs, conf_threshold, nms_threshold):
+def derive_bounding_boxes(frame, outs, conf_threshold, nms_threshold) -> List[BoundingBox]:
+
     frame_height = frame.shape[0]
     frame_width = frame.shape[1]
 
@@ -93,6 +90,8 @@ def post_process(frame, outs, conf_threshold, nms_threshold):
     indices = cv2.dnn.NMSBoxes(boxes, confidences, conf_threshold,
                                nms_threshold)
 
+    bounding_boxes = list()
+
     for i in indices:
         i = i[0]
         box = boxes[i]
@@ -102,10 +101,19 @@ def post_process(frame, outs, conf_threshold, nms_threshold):
         height = box[3]
         final_boxes.append(box)
         left, top, right, bottom = refined_box(left, top, width, height)
-        # draw_predict(frame, confidences[i], left, top, left + width,
-        #              top + height)
-        draw_predict(frame, confidences[i], left, top, right, bottom)
-    return final_boxes
+
+        bb = BoundingBox(left, top, right, bottom, confidences[i])
+        bounding_boxes.append(bb)
+
+    return bounding_boxes
+
+def post_process(frame, outs, conf_threshold, nms_threshold):
+
+    bounding_boxes = derive_bounding_boxes(frame, outs, conf_threshold, nms_threshold)
+
+    for bb in bounding_boxes:
+        draw_predict(frame, bb.confidence, bb.left, bb.top, bb.right, bb.bottom)
+    return bounding_boxes
 
 
 class FPS:

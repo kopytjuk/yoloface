@@ -24,6 +24,7 @@ import sys
 import os
 
 from utils import *
+from model_utils import load_net, forward_pass
 
 #####################################################################
 parser = argparse.ArgumentParser()
@@ -60,9 +61,8 @@ else:
 
 # Give the configuration and weight files for the model and load the network
 # using them.
-net = cv2.dnn.readNetFromDarknet(args.model_cfg, args.model_weights)
-net.setPreferableBackend(cv2.dnn.DNN_BACKEND_OPENCV)
-net.setPreferableTarget(cv2.dnn.DNN_TARGET_CPU)
+
+net = load_net(args.model_cfg, args.model_weights)
 
 
 def _main():
@@ -106,15 +106,7 @@ def _main():
             cv2.waitKey(1000)
             break
 
-        # Create a 4D blob from a frame.
-        blob = cv2.dnn.blobFromImage(frame, 1 / 255, (IMG_WIDTH, IMG_HEIGHT),
-                                     [0, 0, 0], 1, crop=False)
-
-        # Sets the input to the network
-        net.setInput(blob)
-
-        # Runs the forward pass to get output of the output layers
-        outs = net.forward(get_outputs_names(net))
+        outs = forward_pass(net, frame)
 
         # Remove the bounding boxes with low confidence
         faces = post_process(frame, outs, CONF_THRESHOLD, NMS_THRESHOLD)

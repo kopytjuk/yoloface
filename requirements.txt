@@ -5,3 +5,5 @@ opencv-contrib-python
 keras
 matplotlib
 pillow
+click
+tqdm
